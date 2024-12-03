@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>휘매쓰 연산 챌린지!</title>
+    <!-- MathJax 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        #start-screen, #game-container, #game-over {
+            display: none;
+            padding: 50px;
+        }
+        #start-screen.active, #game-container.active, #game-over.active {
+            display: block;
+        }
+        h1 {
+            color: #343a40;
+            margin-bottom: 20px;
+        }
+        .difficulty-button {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .difficulty-button:hover {
+            background-color: #0056b3;
+        }
+        #energy-bar {
+            width: 80%;
+            height: 25px;
+            background-color: #dee2e6;
+            border-radius: 12.5px;
+            margin: 20px auto;
+            overflow: hidden;
+            display: none;
+        }
+        #energy {
+            height: 100%;
+            background-color: #28a745;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+        #stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #495057;
+        }
+        #question {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #343a40;
+        }
+        .option {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 25px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #6c757d;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 250px;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+        .option:hover {
+            background-color: #5a6268;
+        }
+        .option.correct {
+            background-color: #28a745 !important;
+        }
+        .option.wrong {
+            background-color: #dc3545 !important;
+        }
+        #game-over {
+            color: #dc3545;
+        }
+        #game-over button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #game-over button:hover {
+            background-color: #0056b3;
+        }
+        /* Popup 스타일 */
+        #popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: none;
+            z-index: 1000;
+        }
+        #popup button {
+            margin-top: 20px;
+            padding: 8px 16px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #ffc107;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #popup button:hover {
+            background-color: #e0a800;
+        }
+        /* 주관식 입력창 스타일 */
+        #answer-input {
+            padding: 10px;
+            font-size: 18px;
+            width: 300px;
+            border: 2px solid #ced4da;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        #submit-button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+            color: #fff;
+            background-color: #28a745;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #submit-button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <!-- 시작 화면 -->
+    <div id="start-screen" class="active">
+        <h1>휘매쓰 연산 챌린지!</h1>
+        <p>난이도를 선택하세요:</p>
+        <button class="difficulty-button" onclick="startGame('최상')">최상 (20초 시작)</button>
+        <button class="difficulty-button" onclick="startGame('상')">상 (30초 시작)</button>
+        <button class="difficulty-button" onclick="startGame('중')">중 (40초 시작)</button>
+        <button class="difficulty-button" onclick="startGame('하')">하 (시간 제한 없음)</button>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-container">
+        <div id="stats">
+            <div id="score-display">점수: 0</div>
+            <div id="lives-display">남은 기회: 3</div>
+            <div id="time-display">전체 게임 시간: 0초</div>
+        </div>
+        <div id="energy-bar">
+            <div id="energy"></div>
+        </div>
+        <div id="question"></div>
+        <!-- 객관식 보기 -->
+        <div id="options">
+            <button class="option" onclick="checkAnswer(0)"></button>
+            <button class="option" onclick="checkAnswer(1)"></button>
+            <button class="option" onclick="checkAnswer(2)"></button>
+            <button class="option" onclick="checkAnswer(3)"></button>
+        </div>
+        <!-- 주관식 입력 -->
+        <div id="answer-section" style="display: none;">
+            <input type="text" id="answer-input" placeholder="정답을 입력하세요">
+            <br>
+            <button id="submit-button" onclick="submitAnswer()">제출</button>
+        </div>
+    </div>
+
+    <!-- 게임 종료 화면 -->
+    <div id="game-over">
+        <h1>게임 종료!</h1>
+        <p id="final-score"></p>
+        <button onclick="restartGame()">다시 시작하기</button>
+    </div>
+
+    <!-- 팝업 -->
+    <div id="popup">
+        <p id="popup-message"></p>
+        <button onclick="closePopup()">닫기</button>
+    </div>
+
+    <script>
+        // 게임 상태 변수들
+        let score = 0;
+        let lives = 3;
+        let totalGameTime = 0;
+        let difficulty = '';
+        let timePerQuestion = 0;
+        let pointsPerQuestion = 0;
+        let energyWidth = 100;
+        let energyDecreaseAmount = 0;
+        let energyInterval = null;
+        let totalTimeInterval = null;
+        let currentCorrectAnswer = '';
+        let shuffledQuestions = [];
+        let currentQuestionType = '';
+        let currentQuestion = {};
+
+        let questions = [
+            // 객관식 문제 (억, 조 단위)
+            { type: "객관식", question: "1억은 1,000만의 몇 배인가?", options: ["10배", "100배", "1,000배", "100,000배"], answer: "10배" },
+            { type: "객관식", question: "10억은 1억의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" },
+            { type: "객관식", question: "1조는 1억의 몇 배인가?", options: ["10,000배", "1,000배", "100배", "100,000배"], answer: "10,000배" },
+            { type: "객관식", question: "10조는 1조의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" },
+            { type: "객관식", question: "1억은 10,000의 몇 배인가?", options: ["10,000배", "100,000배", "1,000배", "100배"], answer: "10,000배" },
+            { type: "객관식", question: "1조는 10억의 몇 배인가?", options: ["100배", "1,000배", "10,000배", "10배"], answer: "1000배" },
+            { type: "객관식", question: "1조는 1,000억의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" },
+            { type: "객관식", question: "100억은 1,000만의 몇 배인가?", options: ["10,000배", "1,000배", "100,000배", "100배"], answer: "10,00배" },
+            { type: "객관식", question: "100조는 1조의 몇 배인가?", options: ["100배", "1,000배", "10,000배", "10배"], answer: "100배" },
+            { type: "객관식", question: "1억은 1만원의 몇 배인가?", options: ["10,000배", "100,000배", "1,000배", "100배"], answer: "10,000배" },
+            // 주관식 문제 (억, 조 단위)
+            { type: "주관식", question: "다음을 수로 나타내시오: 삼십억 오천만.", answer: "3050000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 팔조 칠천억.", answer: "8700000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 구천오백억 삼천만.", answer: "950030000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 일조 이천억.", answer: "1200000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 육십조 오천억.", answer: "60500000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 사십오억 삼천만.", answer: "4530000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 백이십조 칠천억.", answer: "120700000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 칠백억 사천만.", answer: "70040000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 삼조 오백억.", answer: "3050000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 구십억 이천만.", answer: "9020000000" },
+            // 객관식 문제
+            { type: "객관식", question: "1억은 몇 자리 수인가?", options: ["8자리", "7자리", "9자리", "6자리"], answer: "9자리" },
+            { type: "객관식", question: "1조는 몇 자리 수인가?", options: ["13자리", "12자리", "11자리", "10자리"], answer: "13자리" },
+            { type: "객관식", question: "10억은 몇 자리 수인가?", options: ["10자리", "9자리", "8자리", "11자리"], answer: "10자리" },
+            { type: "객관식", question: "10조는 몇 자리 수인가?", options: ["14자리", "13자리", "12자리", "15자리"], answer: "14자리" },
+            { type: "객관식", question: "100억은 몇 자리 수인가?", options: ["11자리", "10자리", "12자리", "9자리"], answer: "11자리" },
+            { type: "객관식", question: "100조는 몇 자리 수인가?", options: ["15자리", "14자리", "13자리", "16자리"], answer: "15자리" },
+            { type: "객관식", question: "1조는 1억의 몇 배인가?", options: ["10,000배", "1,000배", "100배", "100,000배"], answer: "10,000배" },
+            { type: "객관식", question: "1조는 1천억의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" },
+            { type: "객관식", question: "1억은 1,000만의 몇 배인가?", options: ["10배", "100배", "1,000배", "100배"], answer: "10배" },
+            { type: "객관식", question: "1조는 1,000억의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" },
+            // 주관식 문제
+            { type: "주관식", question: "다음을 수로 나타내시오: 칠천억 삼천만 오백.", answer: "700030000500" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 이십조 사천억 오천만.", answer: "20400050000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 오십억 이천만.", answer: "5020000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 구백조 팔천억.", answer: "900800000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 삼십억 칠천만.", answer: "3070000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 육조 삼천억.", answer: "6300000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 팔십억 사천만.", answer: "8040000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 십조 오천억.", answer: "10500000000000" }, // 수정됨
+            { type: "주관식", question: "다음을 수로 나타내시오: 칠십조 팔천억.", answer: "70800000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 이백조 삼천억.", answer: "200300000000000" },
+            // 객관식 문제
+            { type: "객관식", question: "1억에서 1,000만을 빼면 얼마인가?", options: ["9,000만", "8,000만", "1억", "1,000만"], answer: "9,000만" },
+            { type: "객관식", question: "10억에서 5억을 빼면 얼마인가?", options: ["5억", "15억", "20억", "0억"], answer: "5억" },
+            { type: "객관식", question: "1조에서 1,000억을 빼면 얼마인가?", options: ["8,000억", "9,900억", "9000억", "9900억"], answer: "9000억" }, // 수정됨
+            { type: "객관식", question: "100억에서 50억을 빼면 얼마인가?", options: ["50억", "150억", "200억", "0억"], answer: "50억" },
+            { type: "객관식", question: "1조에서 5,000억을 빼면 얼마인가?", options: ["9,500억", "5,000억", "9500억", "9,000억"], answer: "5,000억" },
+            { type: "객관식", question: "10조에서 1조를 빼면 얼마인가?", options: ["9조", "11조", "1조", "0조"], answer: "9조" },
+            { type: "객관식", question: "100조에서 50조를 빼면 얼마인가?", options: ["50조", "150조", "200조", "0조"], answer: "50조" },
+            { type: "객관식", question: "1억에서 5,000만을 빼면 얼마인가?", options: ["5,000만", "1억", "5억", "0억"], answer: "5,000만" },
+            { type: "객관식", question: "1조에서 500억을 빼면 얼마인가?", options: ["9,950억", "9950억", "9500억", "9,600억"], answer: "9500억" },
+            { type: "객관식", question: "10억에서 1억을 빼면 얼마인가?", options: ["9억", "11억", "1억", "0억"], answer: "9억" },
+            // 주관식 문제
+            { type: "주관식", question: "다음을 수로 나타내시오: 백오십조 삼천억.", answer: "150300000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 이백조 오천억.", answer: "200500000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 칠십오억 육천만.", answer: "7560000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 구백억 오천만.", answer: "90050000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 사조 팔천억.", answer: "4800000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 십오조 이천억.", answer: "15200000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 팔십조 구천억.", answer: "80900000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 이십조 삼천억.", answer: "20300000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 삼백조 칠천억.", answer: "300700000000000" },
+            { type: "주관식", question: "다음을 수로 나타내시오: 육백억 사천만.", answer: "60040000000" },
+            // 객관식 문제
+            { type: "객관식", question: "10억은 1만원의 몇 배인가?", options: ["1,000,000배", "100,000배", "10,000배", "1,000배"], answer: "100,000배" },
+            { type: "객관식", question: "100억은 1억원의 몇 배인가?", options: ["100배", "10배", "1,000배", "1배"], answer: "100배" },
+            { type: "객관식", question: "1조는 1억원의 몇 배인가?", options: ["100,000배", "10,000배", "1,000배", "10배"], answer: "10,000배" },
+            { type: "객관식", question: "10조는 1조의 몇 배인가?", options: ["10배", "100배", "1,000배", "100배"], answer: "10배" },
+            { type: "객관식", question: "100조는 1조의 몇 배인가?", options: ["100배", "10배", "1,000배", "10,000배"], answer: "100배" },
+            { type: "객관식", question: "1조는 1만원의 몇 배인가?", options: ["100,000,000배", "10,000,000배", "1,000,000배", "100,000배"], answer: "100,000,000배" },
+            { type: "객관식", question: "1억은 1만원의 몇 배인가?", options: ["10,000배", "100,000배", "1,000배", "1,000,000배"], answer: "10,000배" },
+            { type: "객관식", question: "1조는 1,000만원의 몇 배인가?", options: ["1,000,000배", "100,000배", "10,000배", "1000배"], answer: "100,000배" },
+            { type: "객관식", question: "1억은 1,000만원의 몇 배인가?", options: ["100배", "10배", "1,000배", "10,000배"], answer: "10배" },
+            { type: "객관식", question: "10억은 1억원의 몇 배인가?", options: ["10배", "100배", "1,000배", "10,000배"], answer: "10배" }
+        ];
+
+        // 보상 확률 설정
+        const rewards = [
+            { chance: 1/10000, message: "축하합니다! 5000원 상품권을 받으셨습니다!" },
+            { chance: 1/1000, message: "축하합니다! 3000원 상품권을 받으셨습니다!" },
+            { chance: 1/500, message: "축하합니다! 1회 면제권을 받으셨습니다!" }
+        ];
+
+        // 게임 시작 함수
+        function startGame(selectedDifficulty) {
+            difficulty = selectedDifficulty;
+            document.getElementById('start-screen').classList.remove('active');
+            document.getElementById('game-container').classList.add('active');
+
+            // 난이도별 설정
+            switch(difficulty) {
+                case '최상':
+                    timePerQuestion = 20;
+                    pointsPerQuestion = 20;
+                    break;
+                case '상':
+                    timePerQuestion = 30;
+                    pointsPerQuestion = 15;
+                    break;
+                case '중':
+                    timePerQuestion = 40;
+                    pointsPerQuestion = 13;
+                    break;
+                case '하':
+                    timePerQuestion = 0; // 시간 제한 없음
+                    pointsPerQuestion = 10;
+                    break;
+            }
+
+            if(difficulty !== '하') {
+                document.getElementById('energy-bar').style.display = 'block';
+                energyWidth = 100;
+                updateEnergyBar();
+                startEnergyBar();
+            } else {
+                document.getElementById('energy-bar').style.display = 'none';
+            }
+
+            // 게임 타이머 시작
+            startGameTimer();
+
+            // 질문 섞기
+            shuffledQuestions = shuffleArray([...questions]);
+
+            // 초기 점수와 생명 설정
+            score = 0;
+            lives = 3;
+            totalGameTime = 0;
+            updateStats();
+
+            // 첫 질문 로드
+            loadNextQuestion();
+        }
+
+        // 게임 타이머
+        function startGameTimer() {
+            totalTimeInterval = setInterval(function() {
+                totalGameTime += 1;
+                document.getElementById('time-display').innerText = '전체 게임 시간: ' + totalGameTime + '초';
+            }, 1000);
+        }
+
+        // 에너지 바 시작
+        function startEnergyBar() {
+            clearInterval(energyInterval);
+            energyInterval = setInterval(function() {
+                if(timePerQuestion > 0) {
+                    energyWidth -= (100 / (timePerQuestion * 10)); // 0.1초마다 감소
+                    if(energyWidth <= 0) {
+                        energyWidth = 0;
+                        lives -= 1;
+                        if(lives <= 0) {
+                            endGame();
+                        } else {
+                            document.getElementById('lives-display').innerText = '남은 기회: ' + lives;
+                            loadNextQuestion();
+                        }
+                    }
+                    updateEnergyBar();
+                }
+            }, 100);
+        }
+
+        // 에너지 바 업데이트
+        function updateEnergyBar() {
+            document.getElementById('energy').style.width = energyWidth + '%';
+            if(energyWidth > 60) {
+                document.getElementById('energy').style.backgroundColor = '#28a745';
+            } else if(energyWidth > 30) {
+                document.getElementById('energy').style.backgroundColor = '#ffc107';
+            } else {
+                document.getElementById('energy').style.backgroundColor = '#dc3545';
+            }
+        }
+
+        // 질문 로드 함수
+        function loadNextQuestion() {
+            if(shuffledQuestions.length === 0) {
+                // 모든 질문을 다 풀었으면 다시 섞기
+                shuffledQuestions = shuffleArray([...questions]);
+            }
+
+            currentQuestionIndex = Math.floor(Math.random() * shuffledQuestions.length);
+            currentQuestion = shuffledQuestions[currentQuestionIndex];
+            shuffledQuestions.splice(currentQuestionIndex,1); // 중복 방지
+
+            // 질문 표시
+            document.getElementById('question').innerText = currentQuestion.question;
+
+            // 현재 정답 저장
+            currentCorrectAnswer = currentQuestion.answer.trim();
+
+            // 질문 타입에 따라 보기 또는 입력창 표시
+            if(currentQuestion.type === "객관식") {
+                currentQuestionType = "객관식";
+                document.getElementById('options').style.display = 'block';
+                document.getElementById('answer-section').style.display = 'none';
+
+                // 보기 버튼에 옵션 설정
+                let options = currentQuestion.options.slice(); // 깊은 복사
+                shuffleArray(options);
+
+                let optionButtons = document.getElementsByClassName('option');
+                for(let i=0; i < optionButtons.length; i++) {
+                    optionButtons[i].innerText = options[i];
+                    optionButtons[i].classList.remove('correct', 'wrong');
+                }
+            } else {
+                currentQuestionType = "주관식";
+                document.getElementById('options').style.display = 'none';
+                document.getElementById('answer-section').style.display = 'block';
+                document.getElementById('answer-input').value = '';
+                document.getElementById('answer-input').style.borderColor = '#ced4da'; // 기본 테두리 색상
+                document.getElementById('answer-input').focus();
+            }
+
+            // 에너지 바 리셋
+            if(difficulty !== '하') {
+                energyWidth = 100;
+                updateEnergyBar();
+                clearInterval(energyInterval);
+                startEnergyBar();
+            }
+
+            // MathJax 렌더링
+            typesetMath();
+        }
+
+        // 정답 확인 함수 (객관식)
+        function checkAnswer(selectedIndex) {
+            if(currentQuestionType !== "객관식") return;
+
+            let optionButtons = document.getElementsByClassName('option');
+            let selectedOption = optionButtons[selectedIndex].innerText.trim();
+            let correctAnswer = currentCorrectAnswer;
+
+            if(selectedOption === correctAnswer) {
+                // 정답
+                score += pointsPerQuestion;
+                document.getElementById('score-display').innerText = '점수: ' + score;
+                optionButtons[selectedIndex].classList.add('correct');
+                // 보상 확인
+                checkReward();
+                // 1초 후 다음 질문 로드
+                setTimeout(loadNextQuestion, 1000);
+            } else {
+                // 오답
+                lives -= 1;
+                if(lives <= 0) {
+                    optionButtons[selectedIndex].classList.add('wrong');
+                    showCorrectAnswer();
+                    endGame();
+                } else {
+                    document.getElementById('lives-display').innerText = '남은 기회: ' + lives;
+                    optionButtons[selectedIndex].classList.add('wrong');
+                    showCorrectAnswer();
+                    // 1초 후 다음 질문 로드
+                    setTimeout(loadNextQuestion, 1000);
+                }
+            }
+
+            updateStats();
+        }
+
+        // 정답 제출 함수 (주관식)
+        function submitAnswer() {
+            if(currentQuestionType !== "주관식") return;
+
+            let userAnswer = document.getElementById('answer-input').value.trim();
+            let correctAnswer = currentCorrectAnswer;
+
+            if(userAnswer === correctAnswer) {
+                // 정답
+                score += pointsPerQuestion;
+                document.getElementById('score-display').innerText = '점수: ' + score;
+                // 보상 확인
+                checkReward();
+                // 정답 표시 (녹색 테두리)
+                document.getElementById('answer-input').style.borderColor = '#28a745';
+                // 1초 후 다음 질문 로드
+                setTimeout(loadNextQuestion, 1000);
+            } else {
+                // 오답
+                lives -= 1;
+                if(lives <= 0) {
+                    // 오답 표시 (빨간 테두리) 및 정답 표시
+                    document.getElementById('answer-input').style.borderColor = '#dc3545';
+                    showCorrectAnswer();
+                    endGame();
+                } else {
+                    document.getElementById('lives-display').innerText = '남은 기회: ' + lives;
+                    // 오답 표시 (빨간 테두리)
+                    document.getElementById('answer-input').style.borderColor = '#dc3545';
+                    showCorrectAnswer();
+                    // 1초 후 다음 질문 로드
+                    setTimeout(loadNextQuestion, 1000);
+                }
+            }
+
+            updateStats();
+        }
+
+        // 정답 표시 함수
+        function showCorrectAnswer() {
+            if(currentQuestionType === "객관식") {
+                let optionButtons = document.getElementsByClassName('option');
+                let correctAnswer = currentCorrectAnswer;
+                for(let btn of optionButtons) {
+                    if(btn.innerText.trim() === correctAnswer) {
+                        btn.classList.add('correct');
+                        break;
+                    }
+                }
+            } else if(currentQuestionType === "주관식") {
+                let answerInput = document.getElementById('answer-input');
+                answerInput.value = "정답: " + currentCorrectAnswer;
+            }
+        }
+
+        // 게임 종료 함수
+        function endGame() {
+            clearInterval(energyInterval);
+            clearInterval(totalTimeInterval);
+            document.getElementById('game-container').classList.remove('active');
+            document.getElementById('game-over').classList.add('active');
+            document.getElementById('final-score').innerText = '최종 점수: ' + score;
+        }
+
+        // 게임 재시작 함수
+        function restartGame() {
+            document.getElementById('game-over').classList.remove('active');
+            document.getElementById('start-screen').classList.add('active');
+        }
+
+        // 통계 업데이트 함수
+        function updateStats() {
+            document.getElementById('score-display').innerText = '점수: ' + score;
+            document.getElementById('lives-display').innerText = '남은 기회: ' + lives;
+            document.getElementById('time-display').innerText = '전체 게임 시간: ' + totalGameTime + '초';
+        }
+
+        // 배열 섞기 함수
+        function shuffleArray(array) {
+            for(let i = array.length - 1; i > 0; i--){
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 보상 확인 함수
+        function checkReward() {
+            let rand = Math.random();
+            let cumulative = 0;
+            for(let reward of rewards) {
+                cumulative += reward.chance;
+                if(rand < cumulative) {
+                    showPopup(reward.message);
+                    break;
+                }
+            }
+        }
+
+        // 팝업 표시 함수
+        function showPopup(message) {
+            document.getElementById('popup-message').innerText = message;
+            document.getElementById('popup').style.display = 'block';
+        }
+
+        // 팝업 닫기 함수
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+        // MathJax 업데이트
+        function typesetMath() {
+            if(window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+
+        // 질문 로드 시 MathJax 렌더링
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    typesetMath();
+                }
+            });
+        });
+
+        observer.observe(document.getElementById('question'), { childList: true });
+        let optionsObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    typesetMath();
+                }
+            });
+        });
+
+        let optionsDiv = document.getElementById('options');
+        optionsObserver.observe(optionsDiv, { childList: true });
+    </script>
+</body>
+</html>
